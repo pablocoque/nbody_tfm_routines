@@ -1,0 +1,6 @@
+*.bigfile
+*.pdf
+NL_mesh/
+.ipynb_checkpoints/
+*.dat
+*.json
