@@ -191,3 +191,16 @@ def periodic_conditions(coord, L):
     coord[mask1] += L
     coord[mask2] -= L
     return coord
+
+def evaluate_bias(tracer, matter, tracer_pos = 'Position', kmin=0.03, kmax=0.09):
+    delta_matter = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
+    r = FFTPower(delta_matter, mode='1d')
+    Pkm = r.power['power'].real - r.attrs['shotnoise']
+
+    delta_tracer = tracer.to_mesh(position=tracer_pos, resampler='cic', interlaced=True, compensated=True)
+    r = FFTPower(delta_tracer, mode='1d')
+    Pkg = r.power['power'].real - r.attrs['shotnoise']
+
+    k = r.power['k']
+    mask = (k <= kmax)*(k > kmin)
+    return np.mean(np.sqrt(Pkg[mask]/Pkm[mask]))

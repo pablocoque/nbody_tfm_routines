@@ -4,3 +4,4 @@ NL_mesh/
 .ipynb_checkpoints/
 *.dat
 *.json
+*.pyc
