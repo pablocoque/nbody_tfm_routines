@@ -1,6 +1,5 @@
 from nbodykit.lab import *
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
 import sys
 
 sys.path.append('../general_routines/')
@@ -9,12 +8,10 @@ from catalogue_generation import *
 
 ### MAIN
 
-paired = sys.argv[1]
-
 # Setup initial conditions
 cosmo = cosmology.Planck15
-L_mesh = BigFileMesh('paired'+str(paired)+'_Lmesh.bigfile', dataset='Field')
-NL_mesh = BigFileMesh('paired'+str(paired)+'_NLmesh.bigfile', dataset='Field')
+L_mesh = BigFileMesh('Lmesh.bigfile', dataset='Field')
+NL_mesh = BigFileMesh('NLmesh.bigfile', dataset='Field')
 
 Nc = L_mesh.attrs['Nmesh'][0]
 Length = L_mesh.attrs['BoxSize'][0] # Mpc  h-1
@@ -76,5 +73,5 @@ galaxy_posRSD = galaxy_pos + vr
 galaxy_cat['PositionRSD'] = galaxy_posRSD
 delta_gRSD = galaxy_cat.to_mesh(position='PositionRSD', resampler='cic', compensated=True, interlaced=True)
 
-matter_cat.save('Matterpaired'+str(paired)+'_catalog.bigfile')
-galaxy_cat.save('Galaxypaired'+str(paired)+'_catalog.bigfile')
+matter_cat.save('Matter_catalog.bigfile')
+galaxy_cat.save('Galaxy_catalog.bigfile')

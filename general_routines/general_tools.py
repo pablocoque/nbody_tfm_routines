@@ -84,6 +84,52 @@ def compute_Psi(L, nc, delta):
 
     return psi
 
+def kernel_zeld_x(k,v):
+    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
+    mask = k2 == 0
+    vx = v
+    k2[mask] = 1.
+    kernel = k[0]/k2
+    kernel[mask] = 0.
+    vx.real = -kernel*v.imag
+    vx.imag = kernel*v.real
+    return vx
+
+def kernel_zeld_y(k,v):
+    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
+    mask = k2 == 0
+    vy = v
+    k2[mask] = 1.
+    kernel = k[1]/k2
+    kernel[mask] = 0.
+    vy.real = -kernel*v.imag
+    vy.imag = kernel*v.real
+    return vy
+
+def kernel_zeld_z(k,v):
+    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
+    mask = k2 == 0
+    vz = v
+    k2[mask] = 1.
+    kernel = k[2]/k2
+    kernel[mask] = 0.
+    vz.real = -kernel*v.imag
+    vz.imag = kernel*v.real
+    return vz
+
+def compute_zeld_field(L, nc, delta):
+    vfield = np.zeros((nc,nc,nc,3))
+
+    vx = delta.apply(kernel_zeld_x, kind='wavenumber', mode='complex')
+    vy = delta.apply(kernel_zeld_y, kind='wavenumber', mode='complex')
+    vz = delta.apply(kernel_zeld_z, kind='wavenumber', mode='complex')
+    
+    vfield[:,:,:,0] = vx.to_field(mode='real')
+    vfield[:,:,:,1] = vy.to_field(mode='real')
+    vfield[:,:,:,2] = vz.to_field(mode='real')
+
+    return vfield
+
 def forward_evolution(L, nc, vel):
 
     dL = L/nc
@@ -92,54 +138,25 @@ def forward_evolution(L, nc, vel):
     vy = vel[:,:,:,1]
     vz = vel[:,:,:,2]
 
-    pos1d = np.zeros(nc**3*3)
-    pos = pos1d.reshape(nc,nc,nc,3)
-    posic=pos
-    posn3 = pos1d.reshape(nc**3, 3)
+    pos = np.zeros((nc,nc,nc,3))
 
     for i in range(nc):
           for j in range(nc):
             for k in range(nc):
-
-                rx = 0.5*dL
-                ry = 0.5*dL
-                rz = 0.5*dL
-
-                xp = float(i)*dL+rx
-                yp = float(j)*dL+ry
-                zp = float(k)*dL+rz
-
-                posic[i,j,k,0]=xp
-                posic[i,j,k,1]=yp
-                posic[i,j,k,2]=zp
+                xp = (float(i) + 0.5)*dL
+                yp = (float(j) + 0.5)*dL
+                zp = (float(k) + 0.5)*dL
 
                 xp += vx[i,j,k]
                 yp += vy[i,j,k]
                 zp += vz[i,j,k]
 
-                if(xp<0):
-                    xp += L
-                if(xp>=L):
-                    xp -= L
-
-                if(yp<0):
-                    yp += L
-                if(yp>=L):
-                    yp -= L
-
-                if(zp<0):
-                    zp += L
-                if(zp>=L):
-                    zp -= L
-
                 pos[i,j,k,0] = xp
                 pos[i,j,k,1] = yp
                 pos[i,j,k,2] = zp
 
-                l = k + j*(nc + i)
-                posn3[l,0] = xp
-                posn3[l,1] = yp
-                posn3[l,2] = zp
+    posn3 = pos.reshape(nc**3, 3)
+    periodic_conditions(posn3,L)
 
     return posn3
 
@@ -186,13 +203,20 @@ def compute_vr(vel, q, observer, z):
     return f(z)*dot_prod[:, np.newaxis]*line_of_sight
 
 def periodic_conditions(coord, L):
-    mask1 = coord<0
+    mask1 = coord<0.
     mask2 = coord>=L
     coord[mask1] += L
     coord[mask2] -= L
     return coord
 
-def evaluate_bias(tracer, matter, tracer_pos = 'Position', kmin=0.03, kmax=0.09):
+def boxfit_conditions(coord, L):
+    mask1 = coord<0.
+    mask2 = coord>=L
+    coord[mask1] = 0.
+    coord[mask2] = L
+    return coord
+
+def evaluate_bias(tracer, matter, tracer_pos = 'Position', kmin=0.03, kmax=0.09, return_std=False):
     delta_matter = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
     r = FFTPower(delta_matter, mode='1d')
     Pkm = r.power['power'].real - r.attrs['shotnoise']
@@ -203,4 +227,7 @@ def evaluate_bias(tracer, matter, tracer_pos = 'Position', kmin=0.03, kmax=0.09)
 
     k = r.power['k']
     mask = (k <= kmax)*(k > kmin)
-    return np.mean(np.sqrt(Pkg[mask]/Pkm[mask]))
+    if return_std:
+        return np.mean(np.sqrt(Pkg[mask]/Pkm[mask])), np.std(np.sqrt(Pkg[mask]/Pkm[mask]))
+    else:
+        return np.mean(np.sqrt(Pkg[mask]/Pkm[mask]))

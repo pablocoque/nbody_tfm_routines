@@ -1,7 +1,5 @@
 from nbodykit.lab import *
 import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-import matplotlib.pyplot as plt
 import dask.array as da
 
 import sys
@@ -26,33 +24,13 @@ zinit = 3.
 r_s = 2.*(Length/Nc) # smoothing radius
 print('Smoothing radius=', r_s)
 
-# Compute matter density field
-delta_dm = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
-
-# Compute matter P(k,z)
-r = FFTPower(delta_dm, mode="1d")
-Pkdm = r.power['power'].real - r.power.attrs['shotnoise']
-k = r.power['k']
-
 ### Import galaxy catalog
 galaxy = BigFileCatalog('Galaxypaired'+str(paired)+'_catalog.bigfile')
-
-# Compute galaxy density field
-delta_g = galaxy.to_mesh(resampler='cic', interlaced=True, compensated=True)
-delta_gRSD = galaxy.to_mesh(position='PositionRSD', resampler='cic', interlaced=True, compensated=True)
 ngal = galaxy.csize
 
-# Compute galaxy P(k,z)
-r = FFTPower(delta_g, mode='1d')
-Pkg = r.power['power'].real - r.attrs['shotnoise']
-
-r = FFTPower(delta_gRSD, mode='1d')
-PkgRSD = r.power['power'].real - r.attrs['shotnoise']
-
-# Calculate bias pre reconstruction
-mask = (k <= 0.09)*(k > 0.03)
-bg = np.mean(np.sqrt(Pkg[mask]/Pkdm[mask]))
-bgRSD = np.mean(np.sqrt(PkgRSD[mask]/Pkdm[mask]))
+# Evaluate bias in real and redshift space
+bg = evaluate_bias(galaxy, matter)
+bgRSD = evaluate_bias(galaxy, matter, tracer_pos='PositionRSD')
 
 print('bias (real) PRE= {:.2f} +- {:.2f}'.format(bg, np.std(np.sqrt(Pkg[mask]/Pkdm[mask]))))
 print('bias (redshift) PRE= {:.2f} +- {:.2f}'.format(bgRSD, np.std(np.sqrt(PkgRSD[mask]/Pkdm[mask]))))
@@ -79,24 +57,17 @@ with open('paired'+str(paired)+'_cat_pre_z0.3.dat', 'wb') as ff:
     for line in mat:
         np.savetxt(ff, line, fmt='%.5f')
 
-reconstructedQ, reconstructedQS = iteration(3, Length, Nc, zobs, zinit, galaxy, np.array([Length/2, Length/2, Length/2]), k, Pkg)#, delta_dm)
+# Apply reconstruction
+iterative_reconstruction(3, Length, Nc, zobs, zinit, galaxy, matter, np.array([Length/2, Length/2, Length/2]), real_space=False, test=False
 
 # Bias in real space
-r = FFTPower(reconstructedQ, mode='1d')
-Pkgreconr = r.power['power'].real - r.attrs['shotnoise']
-bgreconr1 = np.mean(np.sqrt(Pkgreconr[mask]*(D(zobs)**2)/(Pkdm[mask]*(D(zinit)**2))))
-
-bgreconr2 = np.mean(np.sqrt(Pkgreconr[mask]/Pkdm[mask]))
+bgreconr2 = evaluate_bias(galaxy, matter, tracer_pos='PositionQ')
+bgreconr1 = bgreconr2*D(zobs)/D(zinit)
 print('bias (real) POST= {:.2f}(z={:.2f}),{:.2f}(z={:.2f})'.format(bgreconr1, zinit,bgreconr2, zobs))
 
 # Bias in redshift space
-r = FFTPower(reconstructedQS, mode='1d')
-Pkgrecons = r.power['power'].real - r.attrs['shotnoise']
-
-bgrecons1 = np.mean(np.sqrt(Pkgrecons[mask]*(D(zobs)**2)/(Pkdm[mask]*(D(zinit)**2))))
-
-bgrecons2 = np.mean(np.sqrt(Pkgrecons[mask]/Pkdm[mask]))
-
+bgrecons2 = evaluate_bias(galaxy, matter, tracer_pos='PositionQS')
+bgrecons1 = bgrecons2*D(zobs)/D(zinit)
 print('bias (redshift) POST= {:.2f}(z={:.2f}),{:.2f}(z={:.2f})'.format(bgrecons1, zinit,bgrecons2, zobs))
 
 # Compute celestial coordinates post-reconstruction
