@@ -20,7 +20,7 @@ zobs = 0.3
 Nlinear = NL_field(L_mesh, NL_mesh)
 Nlinear = FieldMesh(Nlinear)
 
-forward_displf = compute_Psi(Length, Nc, Nlinear.compute(mode='real'))
+forward_displf = compute_Psi(Length, Nc, Nlinear.compute(mode='real') - 1.)
 matter_pos = forward_evolution(Length, Nc, forward_displf)
 ww = np.ones(len(matter_pos))
 with open('matter_file.dat', 'wb') as ff:
@@ -35,7 +35,7 @@ alpha = 1.3
 delta_th = 0.
 gamma = 0.02
 
-galaxy_pos = make_catalog_g(delta_dm.compute(mode='real'), alpha, gamma, delta_th, Length, Nc)
+galaxy_pos = make_catalog_g(delta_dm.compute(mode='real') - 1., alpha, gamma, delta_th, Length, Nc)
 
 Ng = len(galaxy_pos)
 n = Ng/Length**3
@@ -53,7 +53,7 @@ galaxy_cat.attrs['Nmesh'] = np.array([Nc, Nc, Nc])
 bg = evaluate_bias(galaxy_cat, matter_cat)
 print('Galaxy bias = {:.2f}'.format(bg))
 
-peculiar_field = compute_Psi(Length, Nc, (delta_dm.paint(mode='real') - 1.))
+peculiar_field = compute_Psi(Length, Nc, (delta_dm.compute(mode='real') - 1.))
 observer = np.array([Length/2,Length/2,Length/2])
 vr = compute_vr(field_interpolation(Length, Nc, peculiar_field, galaxy_pos), galaxy_pos, observer, zobs)
 galaxy_posRSD = boxfit_conditions(galaxy_pos + vr, Length)
