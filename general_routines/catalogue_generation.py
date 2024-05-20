@@ -25,8 +25,7 @@ def NL_field(deltaL, deltaNL):
     Lkernel[mask] = 1.
     NLkernel = NLkernel_field.compute(mode='complex')
     kernel = np.sqrt(NLkernel/Lkernel)
-    kernel[mask] = 0.
-    return kernel*deltaL.to_field(mode='complex')
+    return kernel*deltaL.compute(mode='complex')
 
 def step_theta(delta, delta_th):
     if delta<delta_th:

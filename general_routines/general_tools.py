@@ -75,60 +75,13 @@ def compute_Psi(L, nc, delta):
     vzg = ifft(vfz)
     vz = vzg.real
 
-    vel1D = np.zeros(nc**3 * 3)
-    psi   = vel1D.reshape(nc,nc,nc,3)
+    psi   = np.zeros((nc,nc,nc,3))
 
     psi[:,:,:,0] = vx
     psi[:,:,:,1] = vy
     psi[:,:,:,2] = vz
 
     return psi
-
-def kernel_zeld_x(k,v):
-    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
-    mask = k2 == 0
-    vx = v
-    k2[mask] = 1.
-    kernel = k[0]/k2
-    kernel[mask] = 0.
-    vx.real = -kernel*v.imag
-    vx.imag = kernel*v.real
-    return vx
-
-def kernel_zeld_y(k,v):
-    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
-    mask = k2 == 0
-    vy = v
-    k2[mask] = 1.
-    kernel = k[1]/k2
-    kernel[mask] = 0.
-    vy.real = -kernel*v.imag
-    vy.imag = kernel*v.real
-    return vy
-
-def kernel_zeld_z(k,v):
-    k2 = sum(ki ** 2 for ki in k) # k^2 on the mesh
-    mask = k2 == 0
-    vz = v
-    k2[mask] = 1.
-    kernel = k[2]/k2
-    kernel[mask] = 0.
-    vz.real = -kernel*v.imag
-    vz.imag = kernel*v.real
-    return vz
-
-def compute_zeld_field(L, nc, delta):
-    vfield = np.zeros((nc,nc,nc,3))
-
-    vx = delta.apply(kernel_zeld_x, kind='wavenumber', mode='complex')
-    vy = delta.apply(kernel_zeld_y, kind='wavenumber', mode='complex')
-    vz = delta.apply(kernel_zeld_z, kind='wavenumber', mode='complex')
-    
-    vfield[:,:,:,0] = vx.to_field(mode='real')
-    vfield[:,:,:,1] = vy.to_field(mode='real')
-    vfield[:,:,:,2] = vz.to_field(mode='real')
-
-    return vfield
 
 def forward_evolution(L, nc, vel):
 

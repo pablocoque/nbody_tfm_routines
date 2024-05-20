@@ -19,11 +19,10 @@ Nc = L_mesh.attrs['Nmesh'][0]
 Length = L_mesh.attrs['BoxSize'][0] # Mpc  h-1
 zobs = 0.3
 
-deltaICNL = convolve_NL(Length, Nc, (L_mesh.paint(mode='real') - 1.), (NL_mesh.paint(mode='real') - 1.))
+Nlinear = NL_field(L_mesh, NL_mesh)
+Nlinear = FieldMesh(Nlinear)
 
-Nlinear = ArrayMesh(deltaICNL + 1., Length)
-
-forward_displf = compute_Psi(Length, Nc, deltaICNL)
+forward_displf = compute_Psi(Length, Nc, Nlinear.compute(mode='real'))
 matter_pos = forward_evolution(Length, Nc, forward_displf)
 ww = np.ones(len(matter_pos))
 with open('matter_file.dat', 'wb') as ff:
@@ -34,17 +33,11 @@ matter_cat.attrs['BoxSize'] = np.array([Length, Length, Length])
 matter_cat.attrs['Nmesh'] = np.array([Nc, Nc, Nc])
 delta_dm = matter_cat.to_mesh(resampler='cic', interlaced=True, compensated=True)
 
-r = FFTPower(delta_dm, mode='1d')
-Pkdm = r.power['power'].real - r.attrs['shotnoise']
-k = r.power['k']
-
 alpha = 1.3
 delta_th = 0.
 gamma = 0.02
-# n0 = 3.6e-4
-# gamma = n0/np.mean((delta_dm.paint(mode='real'))**alpha)
 
-galaxy_pos = make_catalog_g((delta_dm.paint(mode='real') - 1.), alpha, gamma, delta_th, Length, Nc)
+galaxy_pos = make_catalog_g(delta_dm.compute(mode='real'), alpha, gamma, delta_th, Length, Nc)
 
 Ng = len(galaxy_pos)
 n = Ng/Length**3
@@ -65,7 +58,7 @@ print('Galaxy bias = {:.2f}'.format(bg))
 peculiar_field = compute_Psi(Length, Nc, (delta_dm.paint(mode='real') - 1.))
 observer = np.array([Length/2,Length/2,Length/2])
 vr = compute_vr(field_interpolation(Length, Nc, peculiar_field, galaxy_pos), galaxy_pos, observer, zobs)
-galaxy_posRSD = galaxy_pos + vr
+galaxy_posRSD = boxfit_conditions(galaxy_pos + vr, Length)
 
 galaxy_cat['PositionRSD'] = galaxy_posRSD
 
