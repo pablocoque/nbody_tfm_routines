@@ -8,10 +8,13 @@ from general_tools import *
 from iterative_reconstruction import *
 
 ### MAIN
+
+paired = sys.argv[1]
+
 cosmo = cosmology.Planck15
 
 ### Import matter catalog
-matter = BigFileCatalog('Matter_catalog.bigfile')
+matter = BigFileCatalog('Matterpaired'+str(paired)+'_catalog.bigfile')
 
 # Define global variables
 Length = matter.attrs['BoxSize'][0]
@@ -22,7 +25,7 @@ r_s = 2.*(Length/Nc) # smoothing radius
 print('Smoothing radius=', r_s)
 
 ### Import galaxy catalog
-galaxy = BigFileCatalog('Galax_catalog.bigfile')
+galaxy = BigFileCatalog('Galaxypaired'+str(paired)+'_catalog.bigfile')
 ngal = galaxy.csize
 
 # Evaluate bias in real and redshift space
@@ -50,7 +53,7 @@ coord_array = np.zeros((ngal, 4))
 coord_array[:, 0:3] = galaxy['SkyCoordz'].compute()
 coord_array[:, 3] = galaxy['SkyCoordzpec'][:,2].compute()
 mat = np.matrix(coord_array)
-with open('cat_pre_z0.3.dat', 'wb') as ff:
+with open('paired'+str(paired)+'_cat_pre_z0.3.dat', 'wb') as ff:
     for line in mat:
         np.savetxt(ff, line, fmt='%.5f')
 
@@ -78,8 +81,8 @@ coord_array = np.zeros((ngal, 4))
 coord_array[:, 0:3] = galaxy['SkyCoordz'].compute()
 coord_array[:, 3] = galaxy['SkyCoordzpec'][:,2].compute()
 mat = np.matrix(coord_array)
-with open('cat_post_z3.dat', 'wb') as ff:
+with open('paired'+str(paired)+'_cat_post_z3.dat', 'wb') as ff:
     for line in mat:
         np.savetxt(ff, line, fmt='%.5f')
 
-galaxy.save('Galaxy_catalog_POST.bigfile')
+galaxy.save('Galaxypaired'+str(paired)+'_catalog_POST.bigfile')

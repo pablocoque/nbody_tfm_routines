@@ -2,22 +2,22 @@ from nbodykit.lab import *
 import matplotlib.pyplot as plt
 import numpy as np
 
-linear = BigFileMesh('paired1_Lmesh.bigfile', dataset='Field')
+linear = BigFileMesh('../paired_simulations/paired1_Lmesh.bigfile', dataset='Field')
 r = FFTPower(linear, mode="1d")
 Pklin = r.power['power'].real
 k_array = r.power['k']
 
-matter1 = BigFileCatalog('Matterpaired1_catalog.bigfile')
+matter1 = BigFileCatalog('../paired_simulations/Matterpaired1_catalog.bigfile')
 matterfield1 = matter1.to_mesh(resampler='cic', interlaced=True, compensated=True)
 r = FFTPower(matterfield1, mode='1d')
 Pk1 = r.power['power'].real - r.power.attrs['shotnoise']
 
-matter2 = BigFileCatalog('Matterpaired2_catalog.bigfile')
+matter2 = BigFileCatalog('../paired_simulations/Matterpaired2_catalog.bigfile')
 matterfield2 = matter2.to_mesh(resampler='cic', interlaced=True, compensated=True)
 r = FFTPower(matterfield2, mode='1d')
 Pk2 = r.power['power'].real - r.power.attrs['shotnoise']
 
-galaxy1 = BigFileCatalog('Galaxypaired1_catalog.bigfile')
+galaxy1 = BigFileCatalog('../paired_simulations/Galaxypaired1_catalog.bigfile')
 delta_g1 = galaxy1.to_mesh(resampler='cic', interlaced=True, compensated=True)
 delta_gRSD1 = galaxy1.to_mesh(position='PositionRSD', resampler='cic', interlaced=True, compensated=True)
 r = FFTPower(delta_g1, mode='1d')
@@ -25,7 +25,7 @@ Pkg1 = r.power['power'].real - r.power.attrs['shotnoise']
 r = FFTPower(delta_gRSD1, mode='1d')
 PkgRSD1 = r.power['power'].real - r.power.attrs['shotnoise']
 
-galaxy2 = BigFileCatalog('Galaxypaired2_catalog.bigfile')
+galaxy2 = BigFileCatalog('../paired_simulations/Galaxypaired2_catalog.bigfile')
 delta_g2 = galaxy2.to_mesh(resampler='cic', interlaced=True, compensated=True)
 delta_gRSD2 = galaxy1.to_mesh(position='PositionRSD', resampler='cic', interlaced=True, compensated=True)
 r = FFTPower(delta_g2, mode='1d')

@@ -25,7 +25,7 @@ Nlinear = FieldMesh(Nlinear)
 forward_displf = compute_Psi(Length, Nc, Nlinear.compute(mode='real') - 1.)
 matter_pos = forward_evolution(Length, Nc, forward_displf)
 ww = np.ones(len(matter_pos))
-with open('matter_file.dat', 'wb') as ff:
+with open('matter'+str(paired)+'_file.dat', 'wb') as ff:
     matter_pos.tofile(ff); ww.tofile(ff); ff.seek(0)
 
 matter_cat = BinaryCatalog(ff.name, [('Position', ('f8', 3)), ('Mass', ('f8', 1))], size=len(matter_pos))
@@ -45,7 +45,7 @@ print('Total of galaxies = ', Ng)
 print('Galaxy number density = ', n)
 
 ww = np.ones(len(galaxy_pos))
-with open('galaxy_file.dat', 'wb') as ff:
+with open('galaxy'+str(paired)+'_file.dat', 'wb') as ff:
     galaxy_pos.tofile(ff); ww.tofile(ff); ff.seek(0)
 
 galaxy_cat = BinaryCatalog(ff.name, [('Position', ('f8', 3)), ('Mass', ('f8', 1))], size=len(galaxy_pos))
@@ -61,7 +61,6 @@ vr = compute_vr(field_interpolation(Length, Nc, peculiar_field, galaxy_pos), gal
 galaxy_posRSD = boxfit_conditions(galaxy_pos + vr, Length)
 
 galaxy_cat['PositionRSD'] = galaxy_posRSD
-
 
 matter_cat.save('Matterpaired'+str(paired)+'_catalog.bigfile')
 galaxy_cat.save('Galaxypaired'+str(paired)+'_catalog.bigfile')
