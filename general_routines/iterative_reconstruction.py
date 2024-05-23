@@ -14,9 +14,11 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
     if real_space:
         tracer['PositionQ'] = tracer['Position']
         s = tracer['Position'].compute()
+        bg = evaluate_bias(tracer, matter, tracer_pos='Position')
     else:
         tracer['PositionQ'] = tracer['PositionRSD']
         s = tracer['PositionRSD'].compute()
+        bg = evaluate_bias(tracer, matter, tracer_pos='PositionRSD')
     
     for i in range(Niter):
         if plot_iterations:
@@ -31,7 +33,6 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
             deltadm = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
             psi = compute_Psi(L, nc, (deltadm.compute(mode='real') - 1.))
         else:
-            bg = evaluate_bias(tracer, matter, tracer_pos='PositionQ')
             psi = compute_Psi(L, nc, (delta.apply(divide_bias, mode='real', kind='index')\
                 .apply(filters.Gaussian(r=r_s).filter, mode='complex', kind='wavenumber')\
                 .compute(mode='real') - 1.))
@@ -39,8 +40,8 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
         psi_g = field_interpolation(L, nc, psi, q)
         vr = compute_vr(psi_g, q, observer, zobs)
 
-        # Iteration: q' = s - Psi(q) - vr(q)
-        tracer['PositionQ'] = periodic_conditions(s - (D(zobs)-D(zinit))*psi_g - vr, L) 
+        # Iteration: q' = s(zobs) - D(zobs)Psi(q) - vr(r(zobs))
+        tracer['PositionQ'] = periodic_conditions(s - D(zobs)*psi_g - vr, L) 
         delta = tracer.to_mesh(resampler='cic', position='PositionQ', interlaced=True, compensated=True)
 
         r = FFTPower(delta, mode='1d')
@@ -62,5 +63,8 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
         
         print('Iteration {:1d}, Mean difference between Pks: {:.2f}'.format(i+1, np.mean(abs(Pk1 - Pk2))))
     
-    tracer['PositionQS'] = periodic_conditions(s - (D(zobs)-D(zinit))*psi_g, L)
+    # Final reconstruction estimate: s(zinit) = q' + D(zinit)Psi(q) + vr(r(zinit))
+    q = tracer['PositionQ'].compute()
+    vr = compute_vr(psi_g, q, observer, zinit)
+    tracer['PositionQS'] = periodic_conditions(q + D(zinit)*psi_g + vr, L)
     return

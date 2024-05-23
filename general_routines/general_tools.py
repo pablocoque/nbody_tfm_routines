@@ -12,6 +12,7 @@ def ifft(finarr):
     inarr= np.fft.ifftn(finarr)
     return(inarr)
 
+
 def compute_Psi(L, nc, delta):
     '''
     Obtain displacement field under Zeldovich approximation
@@ -19,52 +20,35 @@ def compute_Psi(L, nc, delta):
 
     deltaf = fft(delta)
 
-    vfx = deltaf.copy()
-    vfy = deltaf.copy()
-    vfz = deltaf.copy()
+    vfx = np.zeros_like(deltaf)
+    vfy = np.zeros_like(deltaf)
+    vfz = np.zeros_like(deltaf)
 
     kfac = 2.0*np.pi/L
 
+    kii = np.arange(nc)
+    mask = kii > nc/2
+    kii[mask] = kii[mask] - nc
+    kii = kfac*np.float64(kii)
+
+    kx, ky, kz = np.meshgrid(kii, kii, kii)
+    k2 = kx**2 + ky**2 + kz**2
+
     for i in range(nc):
-        for j in range(nc):
-            for k in range(nc):
-
-                if i <= nc/2:
-                    kx = kfac*np.float64(i)
-                else:
-                    kx = -kfac*np.float64(nc-i)
-                if j <= nc/2:
-                    ky = kfac*np.float64(j)
-                else:
-                    ky = -kfac*np.float64(nc-j)
-                if k <= nc/2:
-                    kz = kfac*np.float64(k)
-                else:
-                    kz = -kfac*np.float64(nc-k)
-
-                k2 = kx**2 + ky**2 + kz**2
-
-                kernelx = 0.
-                kernely = 0.
-                kernelz = 0.
-
-                # kernel: -nabla/nabla2 = i*kvec/k2 viene de:
-                # d(exp(i*kvec*r))/dr=i*kvec  , d(exp(i*kvec*r))2/dr2=(i*kvec)*(i*kvec)=-k2
-
-                epsk = 1e-14
-                if k2>epsk:
-                    kernelx = kx/k2
-                    kernely = ky/k2
-                    kernelz = kz/k2
-
-                vfx.real[i,j,k] = -kernelx*deltaf.imag[i,j,k]
-                vfx.imag[i,j,k] =  kernelx*deltaf.real[i,j,k]
-
-                vfy.real[i,j,k] = -kernely*deltaf.imag[i,j,k]
-                vfy.imag[i,j,k] =  kernely*deltaf.real[i,j,k]
-
-                vfz.real[i,j,k] = -kernelz*deltaf.imag[i,j,k]
-                vfz.imag[i,j,k] =  kernelz*deltaf.real[i,j,k]
+        if k2[i,i,i]==0:
+            vfx.real[i,i,i] =  0
+            vfx.imag[i,i,i] =  0
+            vfy.real[i,i,i] =  0
+            vfy.imag[i,i,i] =  0
+            vfz.real[i,i,i] =  0
+            vfz.imag[i,i,i] =  0
+        else:
+            vfx.real[i,:,:] = -kii[i]*deltaf.imag[i,:,:]/k2[i,:,:]
+            vfx.imag[i,:,:] =  kii[i]*deltaf.real[i,:,:]/k2[i,:,:]
+            vfy.real[:,i,:] = -kii[i]*deltaf.imag[:,i,:]/k2[:,i,:]
+            vfy.imag[:,i,:] =  kii[i]*deltaf.real[:,i,:]/k2[:,i,:]
+            vfz.real[:,:,i] = -kii[i]*deltaf.imag[:,:,i]/k2[:,:,i]
+            vfz.imag[:,:,i] =  kii[i]*deltaf.real[:,:,i]/k2[:,:,i]
 
     vxg = ifft(vfx)
     vx = vxg.real
@@ -75,7 +59,7 @@ def compute_Psi(L, nc, delta):
     vzg = ifft(vfz)
     vz = vzg.real
 
-    psi   = np.zeros((nc,nc,nc,3))
+    psi = np.zeros((nc,nc,nc,3))
 
     psi[:,:,:,0] = vx
     psi[:,:,:,1] = vy
@@ -87,28 +71,13 @@ def forward_evolution(L, nc, vel):
 
     dL = L/nc
 
-    vx = vel[:,:,:,0]
-    vy = vel[:,:,:,1]
-    vz = vel[:,:,:,2]
+    pos = np.mgrid[0:nc,0:nc,0:nc].astype(np.float64)
+    pos = np.transpose(pos, (1,2,3,0))*dL + 0.5*dL
 
-    pos = np.zeros((nc,nc,nc,3))
+    for i in range(3):
+        pos[:,:,:,i] += vel[:,:,:,i]
 
-    for i in range(nc):
-          for j in range(nc):
-            for k in range(nc):
-                xp = (float(i) + 0.5)*dL
-                yp = (float(j) + 0.5)*dL
-                zp = (float(k) + 0.5)*dL
-
-                xp += vx[i,j,k]
-                yp += vy[i,j,k]
-                zp += vz[i,j,k]
-
-                pos[i,j,k,0] = xp
-                pos[i,j,k,1] = yp
-                pos[i,j,k,2] = zp
-
-    posn3 = pos.reshape(nc**3, 3)
+    posn3 = pos.reshape((nc**3, 3))
     periodic_conditions(posn3,L)
 
     return posn3
