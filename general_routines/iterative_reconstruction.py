@@ -12,14 +12,13 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
     
     r_s = 2.*(L/nc)
     if real_space:
-        tracer['PositionQ'] = tracer['Position']
-        s = tracer['Position'].compute()
-        bg = evaluate_bias(tracer, matter, tracer_pos='Position')
+        position = 'Position'
     else:
-        tracer['PositionQ'] = tracer['PositionRSD']
-        s = tracer['PositionRSD'].compute()
-        bg = evaluate_bias(tracer, matter, tracer_pos='PositionRSD')
+        position = 'PositionRSD'
     
+    s = tracer[position].compute()
+    bg = evaluate_bias(tracer, matter, tracer_pos=position)
+    tracer['PositionQ'] = tracer[position]
     for i in range(Niter):
         if plot_iterations:
             fig, ax = plt.subplots(1, 1, figsize=(8,6))
@@ -38,10 +37,11 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
                 .compute(mode='real') - 1.))
 
         psi_g = field_interpolation(L, nc, psi, q)
-        vr = compute_vr(psi_g, q, observer, zobs)
-
+        vr = compute_vr(psi_g, s, observer, zobs)
+        vrzinit = compute_vr(psi_g, q, observer, zobs)
+        
         # Iteration: q' = s(zobs) - D(zobs)Psi(q) - vr(r(zobs))
-        tracer['PositionQ'] = periodic_conditions(s - D(zobs)*psi_g - vr, L) 
+        tracer['PositionQ'] = periodic_conditions(s - (D(zobs) + D(zinit))*psi_g - vr + vrzinit, L) 
         delta = tracer.to_mesh(resampler='cic', position='PositionQ', interlaced=True, compensated=True)
 
         r = FFTPower(delta, mode='1d')
@@ -64,7 +64,18 @@ def iterative_reconstruction(Niter, L, nc, zobs, zinit, tracer, matter, observer
         print('Iteration {:1d}, Mean difference between Pks: {:.2f}'.format(i+1, np.mean(abs(Pk1 - Pk2))))
     
     # Final reconstruction estimate: s(zinit) = q' + D(zinit)Psi(q) + vr(r(zinit))
-    q = tracer['PositionQ'].compute()
-    vr = compute_vr(psi_g, q, observer, zinit)
-    tracer['PositionQS'] = periodic_conditions(q + D(zinit)*psi_g + vr, L)
+    # q = tracer['PositionQ'].compute()
+    # delta = tracer.to_mesh(resampler='cic', position='PositionQ', interlaced=True, compensated=True)
+    # if test:
+    #     deltadm = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
+    #     psi = compute_Psi(L, nc, (deltadm.compute(mode='real') - 1.))
+    # else:
+    #     psi = compute_Psi(L, nc, (delta.apply(divide_bias, mode='real', kind='index')\
+    #         .apply(filters.Gaussian(r=r_s).filter, mode='complex', kind='wavenumber')\
+    #         .compute(mode='real') - 1.))
+
+    # psi_g = field_interpolation(L, nc, psi, q)
+    # vrzobs = compute_vr(psi_g, s, observer, zobs)
+    # vrzinit = compute_vr(psi_g, q, observer, zinit)
+    # tracer['PositionQS'] = periodic_conditions(s - (D(zobs) + D(zinit))*psi_g - vrzobs + vrzinit, L)
     return
