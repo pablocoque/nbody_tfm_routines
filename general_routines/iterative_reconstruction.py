@@ -6,7 +6,7 @@ from general_tools import *
 
 # FUNCTIONS
 def iterative_reconstruction(Niter, L, nc, zlow, zhigh, tracer, matter, observer, redshift_pos='PositionRSD',
-                             test_with_dmfield=False, plot_iterations=False, savefig=False, plot_suffix=''):
+                             plot_iterations=False, savefig=False, plot_suffix=''):
     def divide_bias(x, v):
         return v/bg
     
@@ -68,11 +68,7 @@ def iterative_reconstruction(Niter, L, nc, zlow, zhigh, tracer, matter, observer
     psi_g = field_interpolation(L, nc, psi, q)
     vrzlow = compute_vr(psi_g, s, observer, zlow)
     vrzhigh = compute_vr(psi_g, q, observer, zhigh)
-    if not test_with_dmfield:
-        tracer['PositionQS'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow + vrzhigh, L)
-        tracer['PositionQR'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow, L)
-    else:
-        tracer['PositionQSt'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow + vrzhigh, L)
-        tracer['PositionQRt'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow, L)
-
+    tracer['PositionQS'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow + vrzhigh, L)
+    tracer['PositionQR'] = periodic_conditions(s - (D(zlow) + D(zhigh))*psi_g - vrzlow, L)
+    
     return
