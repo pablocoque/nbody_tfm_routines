@@ -139,7 +139,10 @@ def boxfit_conditions(coord, L):
     return coord
 
 def evaluate_bias(tracer, matter, tracer_pos = 'Position', kmin=0.03, kmax=0.09, return_std=False):
-    delta_matter = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
+    if 'Mesh' in str(type(matter)):
+        delta_matter = matter
+    else:
+        delta_matter = matter.to_mesh(resampler='cic', interlaced=True, compensated=True)
     r = FFTPower(delta_matter, mode='1d')
     Pkm = r.power['power'].real - r.attrs['shotnoise']
 
